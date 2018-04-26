@@ -20,7 +20,7 @@ use think\route\Dispatch;
  */
 class App implements \ArrayAccess
 {
-    const VERSION = '5.1.7';
+    const VERSION = '5.1.12';
 
     /**
      * 当前模块路径
@@ -126,7 +126,7 @@ class App implements \ArrayAccess
 
     public function __construct($appPath = '')
     {
-        $this->appPath   = $appPath ?: realpath(dirname(dirname($_SERVER['SCRIPT_FILENAME'])) . DIRECTORY_SEPARATOR . 'application') . DIRECTORY_SEPARATOR;
+        $this->appPath   = $appPath ? realpath($appPath) . DIRECTORY_SEPARATOR : $this->getAppPath();
         $this->container = Container::getInstance();
     }
 
@@ -164,7 +164,7 @@ class App implements \ArrayAccess
         $this->beginTime   = microtime(true);
         $this->beginMem    = memory_get_usage();
         $this->thinkPath   = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR;
-        $this->rootPath    = dirname(realpath($this->appPath)) . DIRECTORY_SEPARATOR;
+        $this->rootPath    = dirname($this->appPath) . DIRECTORY_SEPARATOR;
         $this->runtimePath = $this->rootPath . 'runtime' . DIRECTORY_SEPARATOR;
         $this->routePath   = $this->rootPath . 'route' . DIRECTORY_SEPARATOR;
         $this->configPath  = $this->rootPath . 'config' . DIRECTORY_SEPARATOR;
@@ -269,12 +269,13 @@ class App implements \ArrayAccess
             if ('' == $module) {
                 // 加载系统助手函数
                 include $this->thinkPath . 'helper.php';
-                // 加载全局中间件
-                if (is_file($path . 'middleware.php')) {
-                    $middleware = include $path . 'middleware.php';
-                    if (is_array($middleware)) {
-                        $this->middleware->import($middleware);
-                    }
+            }
+
+            // 加载中间件
+            if (is_file($path . 'middleware.php')) {
+                $middleware = include $path . 'middleware.php';
+                if (is_array($middleware)) {
+                    $this->middleware->import($middleware);
                 }
             }
 
@@ -490,6 +491,10 @@ class App implements \ArrayAccess
             if (is_file($filename)) {
                 include $filename;
             }
+        }
+
+        if (is_file($this->runtimePath . 'rule_regex.php')) {
+            $this->route->setRuleRegexs(include $this->runtimePath . 'rule_regex.php');
         }
 
         // 是否强制路由模式
@@ -750,6 +755,10 @@ class App implements \ArrayAccess
      */
     public function getAppPath()
     {
+        if (is_null($this->appPath)) {
+            $this->appPath = Loader::getRootPath() . 'application' . DIRECTORY_SEPARATOR;
+        }
+
         return $this->appPath;
     }
 
@@ -882,7 +891,7 @@ class App implements \ArrayAccess
 
     public function __unset($name)
     {
-        $this->container->__unset($name);
+        $this->container->delete($name);
     }
 
     public function offsetExists($key)
