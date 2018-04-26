@@ -9,6 +9,6 @@ class Wish extends Model
 
     public function getList()
     {
-        return $this->where('uid',1)->order('create_time')->page(0,10)->select();
+        return $this->where('uid',1)->order('id', 'DESC')->page(0,10)->select();
     }
 }
